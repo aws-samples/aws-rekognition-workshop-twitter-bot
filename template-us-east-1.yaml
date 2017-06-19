@@ -1,0 +1,340 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >
+  **WARNING** This template creates a number of resources. You will be billed for the AWS resources used if you create a stack from this template.
+  This template will launch an Amazon Rekognition powered image cropping twitter bot.
+  It will create:
+    - A VPC, IGW, Subnet, etc. for the the twitter bot
+    - SSM Parameter set for API Credentials
+    - DynamoDB Table for Tweet Data
+    - Two S3 Buckets (one for unprocessed images, and one for processed images)
+    - A Kinesis Stream with 1 shard
+    - A Lambda function
+
+Parameters:
+  ConsumerKey:
+    Type: String
+    NoEcho: True
+  ConsumerSecret:
+    Type: String
+    NoEcho: True
+  AccessTokenKey:
+    Type: String
+    NoEcho: True
+  AccessTokenSecret:
+    Type: String
+    NoEcho: True
+  BotCodeBucket:
+    Type: String
+    Default: aws-rekog-twitter-workshop-us-east-1
+    Description: "The S3 Bucket where your bot code is hosted. You can use our default lambda bot or replace this with your own code."
+  BotCodeKey:
+    Type: String
+    Default: process_stream.zip
+    Description: "The S3 Key where your bot code is hosted (CFN needs to be able to access this)."
+  BotCodeRuntime:
+    Type: String
+    Default: python2.7
+    AllowedValues: [nodejs, nodejs4.3, nodejs6.10, java8, python2.7, python3.6, dotnetcore1.0, nodejs4.3-edge]
+  BotCodeHandler:
+    Type: String
+    Default: process_stream.lambda_handler
+  BotCodeMemory:
+    Type: String
+    Default: 1024
+    AllowedValues: [128,192,256,320,384,448,512,576,640,704,768,832,896,960,1024,1088,1152,1216,1280,1344,1408,1472,1536]
+  BotCodeTimeout:
+    Type: Number
+    Default: 60
+    MinValue: 1
+    MaxValue: 300
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Twitter Configuration
+        Parameters:
+          - ConsumerKey
+          - ConsumerSecret
+          - AccessTokenKey
+          - AccessTokenSecret
+      - Label:
+          default: Optional Bot Configuration
+        Parameters:
+          - BotCodeBucket
+          - BotCodeKey
+          - BotCodeRuntime
+          - BotCodeHandler
+          - BotCodeMemory
+          - BotCodeTimeout
+    ParameterLabels:
+      ConsumerKey:
+        default: Consumer Key (API Key)
+      ConsumerSecret:
+        default: Consumer Secret (API Secret)
+      AccessTokenKey:
+        default: Access Token
+      AccessTokenSecret:
+        default: Access Token Secret
+      BotCodeBucket:
+        default: Bot Code Bucket
+      BotCodeKey:
+        default: Bot Code Key
+      BotCodeRuntime:
+        default: Bot Lambda Runtime
+      BotCodeHandler:
+        default: Bot Lambda Handler
+      BotCodeMemory:
+        default: Bot Lambda Memory (MB)
+      BotCodeTimeout:
+        default: Bot Lambda Timeout (Seconds)
+
+
+
+Mappings:
+  RegionAMIMap:
+    us-east-1:
+      "64": ami-c58c1dd3
+#    us-east-2:
+#      "64": ami-4191b524
+#    us-west-1:
+#      "64": ami-7a85a01a
+    us-west-2:
+      "64": ami-4836a428
+    eu-west-1:
+      "64": ami-01ccc867
+#    eu-west-2:
+#      "64": ami-b6daced2
+#    eu-central-1:
+#      "64": ami-b968bad6
+#    ap-northeast-1:
+#      "64": ami-923d12f5
+#    ap-northeast-2:
+#      "64": ami-9d15c7f3
+#    ap-southeast-1:
+#      "64": ami-fc5ae39f
+#    ap-southeast-2:
+#      "64": ami-162c2575
+#    ap-south-1:
+#      "64": ami-52c7b43d
+#    us-gov-west-1:
+#      "64": ami-34e76355
+
+Resources:
+  InfraVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+  InfraIGW:
+    Type: AWS::EC2::InternetGateway
+  InfraVPCIGWAttatchment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref InfraVPC
+      InternetGatewayId: !Ref InfraIGW
+  InfraRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref InfraVPC
+  InfraIGWRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref InfraRouteTable
+      GatewayId: !Ref InfraIGW
+      DestinationCidrBlock: 0.0.0.0/0
+  InfraSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref InfraVPC
+      CidrBlock: 10.0.0.0/24
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [ 0, !GetAZs "" ]
+  InfraSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref InfraVPC
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [ 1, !GetAZs "" ]
+  InfraSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref InfraSubnetA
+      RouteTableId: !Ref InfraRouteTable
+  InfraSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref InfraSubnetB
+      RouteTableId: !Ref InfraRouteTable
+
+  APIKeys:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: StringList
+      Value: !Sub ${ConsumerKey},${ConsumerSecret},${AccessTokenKey},${AccessTokenSecret}
+
+  TweetStream:
+      Type: AWS::Kinesis::Stream
+      Properties:
+        ShardCount: 1
+
+  TweetsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: mid
+          AttributeType: S
+      KeySchema:
+        - AttributeName: mid
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+  UnprocessedBucket:
+    Type: AWS::S3::Bucket
+  ProcessedBucket:
+    Type: AWS::S3::Bucket
+
+  TwitterBotRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${APIKeys}
+                Action:
+                  - ssm:GetParameters
+                  - ssm:DescribeParameters
+              - Effect: Allow
+                Resource: arn:aws:logs:*:*:*
+                Action: logs:*
+              - Effect: Allow
+                Resource: "*"
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+              - Effect: Allow
+                Resource:
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${TweetsTable}
+                Action:
+                  - dynamodb:DeleteItem
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:PutItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                  - dynamodb:BatchWriteItem
+                  - dynamodb:BatchGetItem
+                  - dynamodb:DescribeStream
+                  - dynamodb:ListStreams
+                  - dynamodb:GetShardIterator
+                  - dynamodb:GetRecords
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:PutObjectAcl
+                  - s3:DeleteObject
+                Resource:
+                  - !Sub arn:aws:s3:::${UnprocessedBucket}/*
+                  - !Sub arn:aws:s3:::${ProcessedBucket}/*
+              - Effect: Allow
+                Action:
+                  - kinesis:ListStreams
+                  - kinesis:DescribeStream
+                  - kinesis:GetRecords
+                  - kinesis:GetShardIterator
+                  - kinesis:PutRecord
+                Resource: !GetAtt TweetStream.Arn
+              - Effect: Allow
+                Action:
+                  - rekognition:*
+                Resource: "*"
+
+  StreamListenerProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref TwitterBotRole
+
+  StreamListenerLaunchConfig:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: !FindInMap [ RegionAMIMap, !Ref "AWS::Region", 64 ]
+      InstanceType: t2.micro
+      IamInstanceProfile: !Ref StreamListenerProfile
+      UserData:
+        Fn::Base64: !Sub |
+            #!/bin/bash -xe
+            curl https://s3.dualstack.us-east-2.amazonaws.com/aws-xray-assets.us-east-2/xray-daemon/aws-xray-daemon-2.x.rpm -o /home/ec2-user/xray.rpm
+            yum install -y /home/ec2-user/xray.rpm
+            yum update -y
+            pip install --upgrade python-twitter boto3 requests fleece
+            su - ec2-user -c "cd && aws s3 cp s3://aws-rekog-twitter-workshop/stream.py ."
+            yum install -y --enablerepo=epel nodejs npm
+            npm install -g forever
+            su - ec2-user -c "cd && REGION=\"${AWS::Region}\" STREAM_NAME=\"${TweetStream}\" SSM_PARAMETER_NAME=\"${APIKeys}\" forever start -c python stream.py"
+            /opt/aws/bin/cfn-signal -e $? --region ${AWS::Region} --stack ${AWS::StackName} --resource StreamListengerASG
+  StreamListengerASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT15M
+        Count: 1
+    DependsOn:
+      - ProcessStreamLambda
+      - InfraVPCIGWAttatchment
+      - TweetStreamLambdaMapping
+    Properties:
+      LaunchConfigurationName: !Ref StreamListenerLaunchConfig
+      VPCZoneIdentifier: [!Ref InfraSubnetA, !Ref InfraSubnetB]
+      DesiredCapacity: 1
+      MinSize: 1
+      MaxSize: 1
+
+  ProcessStreamLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Process incoming tweets from kinesis
+      Handler: !Ref BotCodeHandler
+      Runtime: !Ref BotCodeRuntime
+      Code:
+        S3Bucket: !Ref BotCodeBucket
+        S3Key: !Ref BotCodeKey
+      MemorySize: !Ref BotCodeMemory
+      Timeout: !Ref BotCodeTimeout
+      Role: !GetAtt TwitterBotRole.Arn
+      TracingConfig:
+        Mode: Active
+      Environment:
+        Variables:
+          SSM_PARAMETER_NAME: !Ref APIKeys
+          DDB_TABLE: !Ref TweetsTable
+          UNPROCESSED_BUCKET: !Ref UnprocessedBucket
+          PROCESSED_BUCKET: !Ref ProcessedBucket
+  TweetStreamLambdaMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt TweetStream.Arn
+      FunctionName: !Ref ProcessStreamLambda
+      StartingPosition: TRIM_HORIZON
