@@ -44,6 +44,8 @@ To design your own bot you should have a working knowledge of:
 4. How does it all work?
 5. Additional Exercises
 
+## Video of setup: [https://youtu.be/cOTZxTJ3pN4](https://youtu.be/cOTZxTJ3pN4)
+
 ## Setting up a Twitter App
 1. First we need to create a new twitter app by navigating to: [https://apps.twitter.com/](https://apps.twitter.com/)
 
@@ -69,7 +71,7 @@ Now we go to CloudFormation:
 
 Then we click next and fill out the credentials we saved earlier!
 
-![cloudformation credentials](imgs/6_cloudformation.png)
+![cloudformation credentials](imgs/6_filledout.png)
 
 You can walk through the CloudFormation template in detail below:
 <details>
