@@ -75,6 +75,7 @@ Then we click next and fill out the credentials we saved earlier!
 
 You can walk through the CloudFormation template in detail below:
 <details>
+
 ### CloudFormation Details:
 You can see the template file here: [template-us-east-1.yaml](template-us-east-1.yaml)
 
