@@ -73,6 +73,8 @@ Then we click next and fill out the credentials we saved earlier!
 
 ![cloudformation credentials](imgs/6_filledout.png)
 
+Next we continue to click next and accept and then we launch the stack!
+
 You can walk through the CloudFormation template in detail below:
 <details>
 

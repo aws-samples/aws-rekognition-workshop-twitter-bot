@@ -290,7 +290,7 @@ Resources:
             yum install -y /home/ec2-user/xray.rpm
             yum update -y
             pip install --upgrade python-twitter boto3 requests fleece
-            su - ec2-user -c "cd && aws s3 cp s3://aws-rekog-twitter-workshop/stream.py ."
+            su - ec2-user -c "cd && wget https://s3.amazonaws.com/aws-rekog-twitter-workshop/stream.py"
             yum install -y --enablerepo=epel nodejs npm
             npm install -g forever
             su - ec2-user -c "cd && REGION=\"${AWS::Region}\" STREAM_NAME=\"${TweetStream}\" SSM_PARAMETER_NAME=\"${APIKeys}\" forever start -c python stream.py"
