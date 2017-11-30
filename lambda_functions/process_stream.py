@@ -33,10 +33,13 @@ NSFW_STATUS = "@{0} sorry but that doesn't look SFW (sorry if I'm wrong)"
 
 
 def is_nsfw(s3obj):
-    resp = rekognition.detect_moderation_labels(Image=s3obj, MinConfidence=50.)
-    for label in resp['ModerationLabels']:
-        if 'Explicit Nudity' in [label['Name'], label['Parent']]:
-            return True
+    try:
+        resp = rekognition.detect_moderation_labels(Image=s3obj, MinConfidence=50.)
+        for label in resp['ModerationLabels']:
+            if 'Explicit Nudity' in [label['Name'], label['ParentName']]:
+                return True
+    except:
+        return True
     return False
 
 
