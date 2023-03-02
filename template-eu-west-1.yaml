@@ -25,7 +25,7 @@ Parameters:
     NoEcho: True
   BotCodeBucket:
     Type: String
-    Default: aws-rekog-twitter-workshop-eu-west-1
+    Default: DOC-EXAMPLE-BUCKET
     Description: "The S3 Bucket where your bot code is hosted. You can use our default lambda bot or replace this with your own code."
   BotCodeKey:
     Type: String
@@ -290,7 +290,7 @@ Resources:
             yum install -y /home/ec2-user/xray.rpm
             yum update -y
             pip install --upgrade python-twitter boto3 requests fleece
-            su - ec2-user -c "cd && wget https://s3.amazonaws.com/aws-rekog-twitter-workshop/stream.py"
+            su - ec2-user -c "cd && wget https://s3.amazonaws.com/DOC-EXAMPLE-BUCKET/stream.py"
             yum install -y --enablerepo=epel nodejs npm
             npm install -g forever
             su - ec2-user -c "cd && REGION=\"${AWS::Region}\" STREAM_NAME=\"${TweetStream}\" SSM_PARAMETER_NAME=\"${APIKeys}\" forever start -c python stream.py"

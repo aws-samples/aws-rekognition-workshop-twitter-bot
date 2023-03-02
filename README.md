@@ -3,9 +3,9 @@
 # TL;DR How do I 🚀launch🚀 this stack? Click one of these!
 Region (that supports Rekognition) | Button
 ------------ | -------------
-us-east-1 | [![launch stack button](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=TwitterBot&templateURL=https://s3.amazonaws.com/aws-rekog-twitter-workshop/template-us-east-1.yaml)
-us-west-2 | [![launch stack button](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/new?stackName=TwitterBot&templateURL=https://s3.amazonaws.com/aws-rekog-twitter-workshop/template-us-west-2.yaml)
-eu-west-1 | [![launch stack button](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=eu-west-1#/stacks/new?stackName=TwitterBot&templateURL=https://s3.amazonaws.com/aws-rekog-twitter-workshop/template-eu-west-1.yaml)
+us-east-1 | [![launch stack button](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=TwitterBot&templateURL=https://s3.amazonaws.com/DOC-EXAMPLE-BUCKET/template-us-east-1.yaml)
+us-west-2 | [![launch stack button](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/new?stackName=TwitterBot&templateURL=https://s3.amazonaws.com/DOC-EXAMPLE-BUCKET/template-us-west-2.yaml)
+eu-west-1 | [![launch stack button](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=eu-west-1#/stacks/new?stackName=TwitterBot&templateURL=https://s3.amazonaws.com/DOC-EXAMPLE-BUCKET/template-eu-west-1.yaml)
 
 ### **WARNING**: not all of these resources are within the free-tier
 #### Cost Estimate: ~$12/month with ~10 requests per second: [Simple Monthly Calculator](https://calculator.s3.amazonaws.com/index.html#r=IAD&key=calc-C1BFFEDA-A944-472A-9A52-0B57AA3E95CE)
